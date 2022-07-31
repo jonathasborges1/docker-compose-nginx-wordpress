@@ -1,0 +1,64 @@
+version: '3'
+
+services:
+
+  db:
+    image: mysql:latest
+    container_name: wordpress-database
+    restart: always
+    volumes:
+      - ./db-app:/var/lib/mysql 
+    ports:
+      - 3306:3306 
+    environment:
+      MYSQL_DATABASE: wordpress-database      # MYSQL_DATABASE precisa ser igual ao WORDPRESS_DB_NAME
+      MYSQL_USER: wordpress-user              # MYSQL_USER  precisa ser igual ao WORDPRESS_DB_USER
+      MYSQL_PASSWORD: wordpress-password      # MYSQL_PASSWORD precisa ser igual ao WORDPRESS_DB_PASSWORD
+      MYSQL_ROOT_PASSWORD: root
+
+  pma:
+    image: phpmyadmin/phpmyadmin
+    container_name: wordpress-phpmyadmin
+    restart: always
+    environment:
+      PMA_HOST: db
+      MYSQL_ROOT_PASSWORD: root-database
+    ports:
+      - 8081:80
+    depends_on:
+      - db
+
+  wp:
+    image: wordpress:5-fpm
+    container_name: wordpress-app
+    restart: always
+    volumes:
+      - ./src:/var/www/html:rw,cached  
+    expose:
+      - 9000
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_TABLE_PREFIX: wp_
+      WORDPRESS_DB_NAME: wordpress-database        # WORDPRESS_DB_NAME precisa ser igual ao MYSQL_DATABASE
+      WORDPRESS_DB_USER: wordpress-user            # WORDPRESS_DB_USER precisa ser igual ao MYSQL_USER
+      WORDPRESS_DB_PASSWORD: wordpress-password    # WORDPRESS_DB_PASSWORD precisa ser igual ao WORDPRESS_DB_PASSWORD MYSQL_PASSWORD
+    depends_on:
+      - db
+      - pma
+
+  nginx:
+    image: nginx:latest
+    container_name: wordpress-nginx
+    restart: always
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - ./src:/var/www/html:rw,cached
+      - ./nginx/:/etc/nginx/conf.d
+      - ./nginx/logs:/var/log/nginx
+    expose:
+      - 80
+    depends_on:
+      - wp
+
